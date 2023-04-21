@@ -40,10 +40,13 @@ uint32_t button_mask = (1 << BUTTON_RIGHT) | (1 << BUTTON_DOWN) |
                 (1 << BUTTON_LEFT) | (1 << BUTTON_UP) | (1 << BUTTON_SEL);
 
 #define IRQ_PIN   5 // See the SeeSaw example for IRQ_Pin options for other boards
+bool Seesaw; // Stores whether there is a Seesaw Joywing / Initialised or not.
 
 // REPLACE WITH THE MAC Address of your receiver  -  we will use Gump as the controller and FruitOTS as the SHRIMP
-uint8_t broadcastAddress[] = {0x60, 0x55, 0xF9, 0xF5, 0xA4, 0xC4}; // This is FruitOTS - the SHRIMP
-//uint8_t broadcastAddress[] = {0x60, 0x55, 0xF9, 0xF5, 0xA3, 0x80}; // This is Gump - the controller
+uint8_t FruitOTS_Address[] = {0x60, 0x55, 0xF9, 0xF5, 0xA4, 0xC4}; // This is FruitOTS MAC- the SHRIMP
+uint8_t Gump_Address[] =     {0x60, 0x55, 0xF9, 0xF5, 0xA3, 0x80}; // This is Gump MAC - the controller
+
+int incoming_Serial; // Stores incoming Serial Data
 
 // Define variables to store XYZ readings from Adafruit SeeSaw (SS) Controller
 int ss_x;
@@ -120,39 +123,60 @@ void setup() {
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
   WiFi.setHostname(hostname.c_str());
   WiFi.begin(ssid, password);
-  Serial.println(hostname);
+
+ 
 
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(ssid);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
+  
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "Hi! I'm an ESP32, I was programmed in Platformio!");
   });
 
   AsyncElegantOTA.begin(&server);    // Start ElegantOTA
   server.begin();
-  Serial.println("HTTP server started");
+  
+   while (!Serial){ // Stop until serial is connected
+  delay(10);
+  }
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("HTTP server started, Hostname: ");
+  Serial.println(hostname);
 
   // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   // Now setup ESP-NOW with the Seesaw controller
 
-  // Init Adafruit SeeSaw Joy 
-  if(!ss.begin(0x49)){
-    Serial.println("ERROR! seesaw not found");
-    while(1) delay(1);
-  } else {
-    Serial.println("seesaw started");
-    Serial.print("version: ");
-    Serial.println(ss.getVersion(), HEX);
-  }
+  // Init Adafruit SeeSaw Joy
+  bool While_Seesaw = true; // Just a while loop condition for attaching the Seesaw
+  do {
+      if(!ss.begin(0x49)){
+        Serial.println("ERROR! Seesaw Joywing Controller not found!");
+        Serial.println("Check Seesaw Joywing Controller connection or type 'Y' to continue without Seesaw");
+        if(Serial.available() > 0) {     // read the incoming byte:
+          incoming_Serial = Serial.read(); 
+        }
+        if (incoming_Serial == 89){
+          Serial.println("OK, starting without Seesaw!");
+          Seesaw = false;
+          While_Seesaw = false;
+        }
+      }
+      else {
+        Serial.println("Seesaw Joywing Controller started!");
+        Serial.print("Version: ");
+        Serial.println(ss.getVersion(), HEX);
+        Seesaw = true;
+        While_Seesaw = false;
+      }
+  } while (While_Seesaw); // Keep trying to initialise the Seesaw until user presses continue:  Y in ASCII = 89
+
   ss.pinModeBulk(button_mask, INPUT_PULLUP);
   ss.setGPIOInterrupts(button_mask, 1);
 
@@ -168,7 +192,13 @@ void setup() {
   esp_now_register_send_cb(OnDataSent);
   
   // Register peer
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  if (hostname == "ESP32-Gump") { // If this is Gump
+    memcpy(peerInfo.peer_addr, FruitOTS_Address, 6); // Then FruitOTS is the reciever
+  } 
+  else if (hostname == "ESP32-FruitOTS"){ // Else if this is FruitOTS 
+    memcpy(peerInfo.peer_addr, Gump_Address, 6); // Then Gump is the reciever
+  }
+
   peerInfo.channel = 0;  
   peerInfo.encrypt = false;
   
@@ -224,7 +254,7 @@ void Read_Seesaw(){
 
 
 void loop() {
- 
+  
   Read_Seesaw();
  
   // Set values to send
@@ -232,16 +262,29 @@ void loop() {
   ss_Readings.y = ss_y;
 
   // Send message via ESP-NOW
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &ss_Readings, sizeof(ss_Readings));
+  Serial.println(hostname);
+  if (hostname == "ESP32-Gump") { // If this is Gump
+    esp_err_t result = esp_now_send(FruitOTS_Address, (uint8_t *) &ss_Readings, sizeof(ss_Readings)); // Send a message to FruitOTS
+    if (result == ESP_OK) {
+      Serial.println("Sent from Gump to FruitOTS with success!");
+    } else {
+      Serial.println("Error sending the data to FruitOTS");
+    }
+  }
+  else if (hostname == "ESP32-FruitOTS") { // Else if this is FruitOTS 
+    esp_err_t result = esp_now_send(Gump_Address, (uint8_t *) &ss_Readings, sizeof(ss_Readings)); // Send a message to Gump
+    if (result == ESP_OK) {
+      Serial.println("Sent from FruitOTS to Gump with success!");
+    } else {
+      Serial.println("Error sending the data to Gump");
+    }
+  }
    
-  if (result == ESP_OK) {
-    Serial.println("Sent with success");
-  }
-  else {
-    Serial.println("Error sending the data");
-  }
+  incoming_x = incoming_Readings.x;
+  incoming_y = incoming_Readings.y;
 
   Serial.println(incoming_x);
   Serial.println(incoming_y);
 
+  delay(1000);
 }
