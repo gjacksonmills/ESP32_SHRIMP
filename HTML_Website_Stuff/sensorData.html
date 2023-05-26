@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiple Columns Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+        .column {
+            flex: 1;
+            margin: 10px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            box-sizing: border-box;
+            min-width: 250px;
+        }
+        .value-container {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ESP32 imu data</h1>
+    <div class="container">
+        <div class="column">
+            <h2>Current imu data</h2>
+            <div class="value-container">
+                <span id="CIMU_W">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="CIMU_X">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="CIMU_Y">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="CIMU_Z">0.00</span>
+            </div>
+            
+        </div>
+        <div class="column">
+            <h2>Calibration rotations</h2>
+            <div class="value-container">
+                <span id="CalIMU_W">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="CalIMU_X">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="CalIMU_Y">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="CalIMU_Z">0.00</span>
+            </div>
+            
+        </div>
+        <div class="column">
+            <h2>Output</h2>
+            <div class="value-container">
+                <span id="Output_W">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="Output_X">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="Output_Y">0.00</span>
+            </div>
+            <div class="value-container">
+                <span id="Output_Z">0.00</span>
+            </div>
+            
+        </div>
+    </div>
+    <script>
+        const interval = 500; // Set the interval in milliseconds (5000 ms = 5 seconds)
+
+        function updateValues() {
+            fetch('/getValues')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('CIMU_W').textContent = data.CIMU_W.toFixed(2);
+                    document.getElementById('CIMU_X').textContent = data.CIMU_X.toFixed(2);
+                    document.getElementById('CIMU_Y').textContent = data.CIMU_Y.toFixed(2);
+                    document.getElementById('CIMU_Z').textContent = data.CIMU_Z.toFixed(2);
+
+                    document.getElementById('CalIMU_W').textContent = data.CalIMU_W.toFixed(2);
+                    document.getElementById('CalIMU_X').textContent = data.CalIMU_X.toFixed(2);
+                    document.getElementById('CalIMU_Y').textContent = data.CalIMU_Y.toFixed(2);
+                    document.getElementById('CalIMU_Z').textContent = data.CalIMU_Z.toFixed(2);
+
+                    document.getElementById('Output_W').textContent = data.Output_W.toFixed(2);
+                    document.getElementById('Output_X').textContent = data.Output_X.toFixed(2);
+                    document.getElementById('Output_Y').textContent = data.Output_Y.toFixed(2);
+                    document.getElementById('Output_Z').textContent = data.Output_Z.toFixed(2);
+                })
+                .catch(error => console.error('Error fetching values:', error));
+        }
+
+        updateValues(); // Call updateValues on page load
+        setInterval(updateValues, interval); // Call updateValues every interval
+    </script>
+</body>
+</html>
