@@ -8,21 +8,24 @@
 #endif
 
 // How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS 2 // Popular NeoPixel ring size
-#define NEOPIXEL_EXTERNAL 12
+#define NUMPIXELS 16 // Popular NeoPixel ring size
+#define NEOPIXEL_EXTERNAL 12 
+#define NEOPIXEL_ONBOARD  33 
 
-bool onboard = false;
+bool onboard = true;
 
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
 // strips you might need to change the third parameter -- see the
 // strandtest example for more information on possible values.
 //Adafruit_NeoPixel pixels(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800); 
-Adafruit_NeoPixel strip(NUMPIXELS, NEOPIXEL_EXTERNAL, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip(NUMPIXELS, NEOPIXEL_EXTERNAL, NEO_GRBW + NEO_KHZ800);
+Adafruit_NeoPixel Pixel_OnBoard(1, NEOPIXEL_ONBOARD, NEO_GRB + NEO_KHZ800);
 
 #define DELAYVAL 500 // Time (in milliseconds) to pause between pixels
 
 void setup() {
+  Serial.begin(9600);
   // These lines are specifically to support the Adafruit Trinket 5V 16 MHz.
   // Any other board, you can remove this part (but no harm leaving it):
 #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
@@ -66,16 +69,16 @@ void loop() {
     // pixels.Color() takes RGB values, from 0,0,0 up to 255,255,255
     // Here we're using a moderately bright green color:
     //pixels.setPixelColor(i, pixels.Color(0, 150, 0));
-    strip.setPixelColor(i, strip.Color(0, 150, 0));
+    Pixel_OnBoard.setPixelColor(i, Pixel_OnBoard.Color(0, 0, 150));
 
     //pixels.show();   // Send the updated pixel colors to the hardware.
-    strip.show();
+    Pixel_OnBoard.show();
 
     delay(DELAYVAL); // Pause before next pass through loop
   }
 }
 
-  rainbow(100);             // Flowing rainbow cycle along the whole strip
+  rainbow(20);             // Flowing rainbow cycle along the whole strip
 }
 
 
